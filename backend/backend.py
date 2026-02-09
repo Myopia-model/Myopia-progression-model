@@ -16,7 +16,7 @@ def inspect_data(df):
     print("\nFirst 5 rows:")
     print(df)
 
-    
+
 if __name__ == "__main__":
     df = load_data()
     inspect_data(df)
@@ -29,14 +29,27 @@ def prepare_data(df):
         "GENDER",
         "SPHEQ",
         "MOMMY",
-        "DADMY"
+        "DADMY",
+        "TVHR",
+        "READHR",
+        "SPORTHR"
+        
     ]
     df = df[cols]
-    # if != spheq row is useless 
-    df = df.dropna(subset=["SPHEQ"])
+    #Convert to num
     for col in cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
+    # if != spheq row is useless 
+    df = df.dropna(subset=["SPHEQ"])
+    
+
+    df["SCREEN_TIME"] = df["TVHR"]+ 0.5 * df["READHR"]
+    df["OUTDOOR_TIME"] = df["SPORTHR"]
+    df["AGE_x_SCREEN"] = df["AGE"] * df["SCREEN_TIME"]
+    df["AGE_x_OUTDOOR"] = df["AGE"] * df["OUTDOOR_TIME"]
+    df["GENETIC_RISK"] = df["MOMMY"] + df["DADMY"]
     return df
+
 
 def get_clean_data():
     df = load_data()
@@ -67,27 +80,35 @@ def predict_dummy(age, mommy, dadmy):
 
 
 def train_model(df):
-    X = df[["AGE", "MOMMY", "DADMY"]]
+    X = df[["AGE","SCREEN_TIME", "OUTDOOR_TIME", "AGE_x_SCREEN", "AGE_x_OUTDOOR", "GENETIC_RISK", "GENDER"]]
     Y = df["SPHEQ"]
     model = LinearRegression()
     model.fit(X,Y)
     return model
 
-def progression_tracker(age,mommy,dadmy):
+def progression_tracker(age, gender, mommy, dadmy, screen_time, outdoor_time):
     df = get_clean_data()
     model = train_model(df)
     end_age = 25
     ages = list(range(age,end_age + 1))
-
+    n = len(ages)
     X_pred = pd.DataFrame({
         "AGE" : ages,
-        "MOMMY" : [mommy] * len(ages),
-        "DADMY" : [dadmy] * len(ages) 
+        "SCREEN_TIME" : [screen_time] * n,
+        "OUTDOOR_TIME" : [outdoor_time] * n,
+        "AGE_x_SCREEN": [a * screen_time for a in ages] ,
+        "AGE_x_OUTDOOR": [a * outdoor_time for a in ages] ,
+        "GENETIC_RISK": [mommy + dadmy] * n,
+        
+        "GENDER": [gender] * n,
+
     })
 
     spheq_pred = model.predict(X_pred)
+    delta = spheq_pred - spheq_pred[0]
+
 
     return{
         "ages" : ages,
-        "spheq" : spheq_pred.tolist()
+        "delta" : delta.tolist()
     }
