@@ -2,13 +2,32 @@ import pandas as pd
 import numpy as np
 from sklearn.linear_model import LinearRegression
 import os
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, r2_score
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+#--------------------- TESTING ---------------------
+def evaluate_model(df):
+    features = ["AGE", "SCREEN_TIME", "OUTDOOR_TIME", "AGE_x_SCREEN", "AGE_x_OUTDOOR", "GENETIC_RISK","GENDER"]
+    X = df[features].fillna(0)
+    y = df["SPHEQ"]
+
+    X_train, X_test, y_train, y_test = train_test_split(X,y, test_size= 0.2, random_state= 42)
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    print(f"Train size: {len(X_train)} | Test size: {len(X_test)}")
+    print(f"MAE:  {mean_absolute_error(y_test, y_pred):.3f} diopters")
+    print(f"R²:   {r2_score(y_test, y_pred):.3f}")
+
+
 
 def load_data(path=None):
     """Load and return raw myopia CSV data."""
     if path is None:
-        path = os.path.join(BASE_DIR, "myopia.csv")
+        path = os.path.join(BASE_DIR, "..", "database", "myopia.csv")
     df = pd.read_csv(path, sep=";")
     return df
 
@@ -146,3 +165,5 @@ if __name__ == "__main__":
     print("\nProgression result (ages):", result["ages"][:5])
     print("SPHEQ pred (first 5):", result["spheq_pred"][:5])
     print("Delta (first 5):", result["delta"][:5])
+    df = get_clean_data()
+    evaluate_model(df)
